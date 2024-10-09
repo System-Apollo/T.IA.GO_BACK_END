@@ -1,0 +1,42 @@
+<!-- Contém os arquivos HTML, como index.html. -->
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload de Arquivo e Pergunta</title>
+</head>
+<body>
+    <h1>Upload de Arquivo Excel</h1>
+    <form id="upload-form" action="/upload" method="post" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".xlsx, .xls">
+        <button type="submit">Upload</button>
+    </form>
+    
+    <h2>Faça sua Pergunta</h2>
+    <form id="pergunta-form">
+        <input type="text" id="pergunta" placeholder="Digite sua pergunta" required>
+        <button type="button" onclick="fazerPergunta()">Perguntar</button>
+    </form>
+
+    <h3>Resposta</h3>
+    <div id="resposta"></div>
+
+    <script>
+        // Função para enviar a pergunta para o servidor
+        async function fazerPergunta() {
+            const pergunta = document.getElementById('pergunta').value;
+            const response = await fetch('/pergunta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ "pergunta": pergunta })
+            });
+            const data = await response.json();
+            document.getElementById('resposta').innerText = data.resposta;
+        }
+    </script>
+</body>
+</html>
