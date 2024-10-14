@@ -2,6 +2,7 @@
 import pandas as pd
 import os
 import google.generativeai as genai
+from app.functions_ import *
 
 # Função para carregar e preparar os dados do Excel
 def carregar_dados(file):
@@ -16,160 +17,176 @@ def carregar_dados(file):
     
     return df
 
+# Variável global para manter o contexto anterior
+contexto_anterior = {"pergunta": None, "tipo": None}
+
 def processar_pergunta(pergunta, dataframe):
+    global contexto_anterior  # Usar a variável global de contexto
+    
     hoje = pd.Timestamp.now()
+    pergunta_lower = pergunta.lower().strip()
+    
+    # Função auxiliar para verificar o contexto
+    def verificar_contexto(pergunta_atual):
+        # Exemplo de contexto: perguntar sobre arquivados após valor de causa
+        if "arquivados" in pergunta_atual and contexto_anterior['tipo'] == "valor_causa":
+            return processar_status(pergunta_atual, dataframe, "arquivado")
+        # Adicionar mais verificações de contexto conforme necessário
+        return None
+
+    # Verificar se a pergunta atual está relacionada ao contexto anterior
+    resposta_contextual = verificar_contexto(pergunta_lower)
+    if resposta_contextual:
+        # Limpar o contexto após a resposta ser processada, se necessário
+        contexto_anterior = {"pergunta": None, "tipo": None}
+        return resposta_contextual
+
+    # Perguntas genéricas ou conversacionais
+    if any(greeting in pergunta_lower for greeting in ["olá", "como você está", "oi", "bom dia", "boa tarde", "boa noite"]):
+        contexto_anterior = {"pergunta": pergunta, "tipo": "conversacional"}  # Atualizar o contexto
+        chatgemini_resposta = consultar_gemini_conversacional(pergunta)
+        return chatgemini_resposta, {}
 
     # Perguntas sobre status (ativos, arquivados, etc.)
-    if "ativos" in pergunta.lower() or "ativo" in pergunta.lower():
+    if any(status in pergunta_lower for status in ["quantos processos ativos", "processos ativos", "quantos ativos"]):
+        contexto_anterior = {"pergunta": pergunta, "tipo": "status"}  # Atualizar o contexto
         return processar_status(pergunta, dataframe, "ativo")
     
-    elif "arquivados" in pergunta.lower() or "arquivado" in pergunta.lower():
+    elif any(status in pergunta_lower for status in ["quantos processos arquivados", "processos arquivados", "quantos arquivados"]):
+        contexto_anterior = {"pergunta": pergunta, "tipo": "status"}  # Atualizar o contexto
         return processar_status(pergunta, dataframe, "arquivado")
-    
-    # Perguntas sobre fases
-    elif "fase" in pergunta.lower() or "fases" in pergunta.lower():
-        return processar_fase(dataframe)
+    # Perguntas sobre status do caso ou processo de um autor específico
+    elif "status do caso" in pergunta_lower or "status do processo" in pergunta_lower:
+        return processar_status_autor(pergunta, dataframe)
     
     # Perguntas sobre órgãos
-    elif "órgão" in pergunta.lower() or "orgao" in pergunta.lower():
+    elif "órgão" in pergunta_lower or "orgao" in pergunta_lower:
         return processar_orgao(dataframe)
 
-
     # Perguntas sobre cadastros
-    elif "cadastrados" in pergunta.lower() or "cadastrado" in pergunta.lower():
+    elif "cadastrados" in pergunta_lower or "cadastrado" in pergunta_lower:
         return processar_datas(dataframe, "Data de cadastro", pergunta)
     
     # Perguntas sobre distribuidos
-    elif "distribuidos" in pergunta.lower() or "distribuido" in pergunta.lower():
+    elif "distribuídos" in pergunta_lower or "distribuido" in pergunta_lower:
         return processar_datas(dataframe, "Data de distribuição", pergunta)
     
-    # Perguntas sobre citações
-    elif "citação" in pergunta.lower() or "citados" in pergunta.lower():
-        return processar_datas(dataframe, "Data de citação", pergunta)
+    # Perguntas sobre valor total de acordos
+    elif "valor total de acordos" in pergunta_lower or "acordo" in pergunta_lower:
+        contexto_anterior = {"pergunta": pergunta, "tipo": "valor_acordo"}  # Atualizar o contexto
+        return processar_valor_acordo(dataframe)
 
+    # Perguntas sobre processos ainda não citados
+    elif any(term in pergunta_lower for term in ["não foram citados", "não citado"]):
+        contexto_anterior = {"pergunta": pergunta, "tipo": "nao_citados"}  # Atualizar o contexto
+        return processar_nao_citados(dataframe)
 
-
-
-     # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
-    chatgemini = consultar_gemini(pergunta, dataframe)
-     # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
-    return chatgemini
-
-# Função auxiliar para processar perguntas sobre status (ativos, arquivados, etc.)
-def processar_status(pergunta, dataframe, status):
-    status_lower = status.lower()
-    processos_status = dataframe[dataframe['Status'].str.lower() == status_lower]
-    quantidade = processos_status.shape[0]
+    # Perguntas sobre valores de condenação por estado
+    elif any(term in pergunta_lower for term in ["valor de condenação por estado", "total de condenação por estado"]):
+        contexto_anterior = {"pergunta": pergunta, "tipo": "valor_condenacao_estado"}  # Atualizar o contexto
+        return processar_valor_condenacao_por_estado(dataframe)
     
-    # Retornar a chave correta dependendo do status
-    if status_lower == 'ativo':
-        return f"Atualmente, há {quantidade} processos ativos.", {
-            "ativos": quantidade,
-            "arquivados": dataframe[dataframe['Status'].str.lower() == 'arquivado'].shape[0]  # Adicionar arquivados para gráfico comparativo
-        }
-    elif status_lower == 'arquivado':
-        return f"Atualmente, há {quantidade} processos arquivados.", {
-            "ativos": dataframe[dataframe['Status'].str.lower() == 'ativo'].shape[0],  # Adicionar ativos para gráfico comparativo
-            "arquivados": quantidade
-        }
-    else:
-        return f"Atualmente, há {quantidade} processos {status}.", {
-            "status": quantidade
-        }
+    # Pergunta sobre qual estado tem o maior valor de causa
+    elif "estado com maior valor de causa" in pergunta_lower or "maior valor de causa" in pergunta_lower:
+        contexto_anterior = {"pergunta": pergunta, "tipo": "valor_causa"}  # Atualizar o contexto
+        return processar_maior_valor_causa_por_estado(dataframe)
     
-# Função auxiliar para processar perguntas sobre órgãos
-def processar_orgao(dataframe):
-    orgaos = dataframe['Órgão'].str.lower().value_counts().to_dict()
-    orgaos_texto = ", ".join([f"{orgao}: {quantidade}" for orgao, quantidade in orgaos.items()])
-    return f"Os órgãos estão distribuídos da seguinte forma: {orgaos_texto}.", {
-        "orgaos": orgaos
-    }
-
-# Função auxiliar para processar perguntas sobre fases
-def processar_fase(dataframe):
-    fases = dataframe['Fase'].str.lower().value_counts().to_dict()
-    fases_texto = ", ".join([f"{fase}: {quantidade}" for fase, quantidade in fases.items()])
-    return f"As fases estão distribuídas da seguinte forma: {fases_texto}.", {
-        "fases": fases
-    }
-
-
-# Função auxiliar para processar perguntas sobre datas (cadastrados, distribuidos, citados)
-def processar_datas(dataframe, coluna, pergunta):
-    hoje = pd.Timestamp.now()
-
-    # Verificar se a pergunta é sobre um mês específico
-    if "mês" in pergunta.lower() or "mes" in pergunta.lower():
-        mes = extrair_mes_da_pergunta(pergunta)
-        if mes:
-            processos_mes = dataframe[dataframe[coluna].dt.month == mes]
-            quantidade = processos_mes.shape[0]
-            return f"No mês {mes}, foram {quantidade} processos.", {
-                f"{coluna}_por_data": {str(k): v for k, v in processos_mes.groupby(processos_mes[coluna].dt.date).size().to_dict().items()}
-            }
+    # Perguntas sobre maior média de valor de causa
+    elif "maior média de valor de causa" in pergunta_lower:
+        contexto_anterior = {"pergunta": pergunta, "tipo": "media_valor_causa"}  # Atualizar o contexto
+        return processar_media_valor_causa_por_estado(dataframe)
     
-    # Verificar se a pergunta é sobre hoje
-    elif "hoje" in pergunta.lower():
-        processos_hoje = dataframe[dataframe[coluna] == hoje.normalize()]
-        quantidade = processos_hoje.shape[0]
-        return f"Hoje, foram {quantidade} processos.", {
-            f"{coluna}_por_data": {str(hoje.date()): quantidade}
-        }
+    # Perguntas sobre valor total da causa
+    elif "valor total da causa" in pergunta_lower:
+        return processar_valor_total_causa(dataframe)
+
+    # Perguntas sobre trânsito em julgado
+    elif any(term in pergunta_lower for term in ["transitado em julgado", "transitaram em julgado"]):
+        return processar_transito_julgado(dataframe)
     
-    # Verificar se a pergunta é sobre ontem
-    elif "ontem" in pergunta.lower():
-        ontem = (hoje - pd.Timedelta(days=1)).normalize()
-        processos_ontem = dataframe[dataframe[coluna] == ontem]
-        quantidade = processos_ontem.shape[0]
-        return f"Ontem, foram {quantidade} processos.", {
-            f"{coluna}_por_data": {str(ontem.date()): quantidade}
-        }
-
-    # Verificar se a pergunta é sobre um intervalo de tempo (semana atual ou anterior)
-    elif "semana" in pergunta.lower():
-        return processar_semana(dataframe, coluna, pergunta)
+    # Perguntas sobre sentença e resultados dos processos
+    elif any(term in pergunta_lower for term in ["resultados dos processos", "divididos"]):
+        return processar_sentenca(dataframe, pergunta)
     
-    # Caso não encontre o período, retornar uma mensagem padrão
-    return f"Não foi possível identificar o período na pergunta. Por favor, especifique uma data ou intervalo.", {}
+    # Perguntas sobre quantidade de processos por estado
+    elif any(term in pergunta_lower for term in ["quantidade de processos por estado", "quantidade de processos em cada estado"]):
+        return processar_quantidade_processos_por_estado(dataframe)
+
+    # Perguntas gerais sobre quantidade de processos
+    elif "quantidade de processos" in pergunta_lower and "estado" not in pergunta_lower:
+        return processar_quantidade_processos(dataframe)
+    
+    # Perguntas sobre recursos interpostos
+    elif any(term in pergunta_lower for term in ["quantos recursos", "recursos interpostos"]):
+        return processar_quantidade_recursos(dataframe)
+    
+    # Perguntas sobre os assuntos mais recorrentes
+    elif any(term in pergunta_lower for term in ["assuntos mais recorrentes", "assuntos recorrentes"]):
+        return processar_assuntos_recorrentes(dataframe)
+    
+    # Perguntas sobre tribunal com mais ações sobre convenções coletivas
+    elif "tribunal" in pergunta_lower and "convenções coletivas" in pergunta_lower:
+        return processar_tribunal_acoes_convenções(dataframe)
+        
+    # Perguntas sobre rito sumaríssimo
+    elif any(term in pergunta_lower for term in ["rito sumaríssimo", "sumaríssimo"]):
+        return processar_rito(dataframe)
+    
+    # Perguntas sobre fases dos processos
+    elif "fase" in pergunta_lower or "fases" in pergunta_lower:
+        return processar_fase(dataframe)
+    
+    # Perguntas sobre reclamantes com múltiplos processos
+    elif "mais de um processo" in pergunta_lower:
+        return processar_reclamantes_multiplos(dataframe)
+    
+    # Perguntas sobre o estado com maior valor de condenação
+    elif any(term in pergunta_lower for term in ["estado mais ofensor", "estado devo ter mais preocupação"]):
+        return processar_estado_mais_ofensor(dataframe)
+    
+    # Perguntas sobre comarca com maior valor de condenação
+    elif "comarca" in pergunta_lower and any(term in pergunta_lower for term in ["preocupação", "mais ofensora"]):
+        return processar_comarca_mais_preocupante(dataframe)
+    
+    # Perguntas sobre média de duração dos processos arquivados
+    elif "média de duração" in pergunta_lower and "arquivado" in pergunta_lower:
+        return processar_media_duracao_processos_arquivados(dataframe)
+
+    # Perguntas sobre a média de duração por estado
+    elif "média de duração" in pergunta_lower and "estado" in pergunta_lower:
+        return processar_media_duracao_por_estado(dataframe)
+
+    # Perguntas sobre a média de duração por comarca
+    elif "média de duração" in pergunta_lower and "comarca" in pergunta_lower:
+        return processar_media_duracao_por_comarca(dataframe)
+
+    # Perguntas sobre quantidade de processos improcedentes
+    elif any(term in pergunta_lower for term in ["quantos processos improcedentes", "quantidade de processos improcedentes"]):
+        return processar_sentencas_improcedentes(dataframe)
+
+    # Perguntas sobre processos extintos sem custos
+    elif "quantos processos extinto sem custos" in pergunta_lower:
+        return processar_sentencas_extinto_sem_custos(dataframe)
+
+    # Perguntas sobre o processo com maior tempo sem movimentação
+    elif "maior tempo sem movimentação" in pergunta_lower and "processo" in pergunta_lower:
+        return processar_maior_tempo_sem_movimentacao(dataframe)
+    
+    # Perguntas sobre divisão de ritos
+    elif "divisão por rito" in pergunta_lower:
+        return processar_divisao_por_rito(dataframe)
+
+    # Perguntas sobre processos ainda não julgados
+    elif any(term in pergunta_lower for term in ["não foram julgados", "não julgado"]):
+        return processar_nao_julgados(dataframe)
+
+    # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
+    contexto_anterior = {"pergunta": pergunta, "tipo": "desconhecido"}  # Atualizar o contexto com pergunta desconhecida
+    # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
+    chatgemini_resposta = consultar_gemini(pergunta, dataframe)
+    return chatgemini_resposta, {}
 
 
-
-# Função auxiliar para extrair o mês da pergunta
-def extrair_mes_da_pergunta(pergunta):
-    meses = {
-        "janeiro": 1, "fevereiro": 2, "março": 3, "abril": 4, "maio": 5, "junho": 6,
-        "julho": 7, "agosto": 8, "setembro": 9, "outubro": 10, "novembro": 11, "dezembro": 12
-    }
-    for mes, numero in meses.items():
-        if mes in pergunta.lower():
-            return numero
-    return None
-
-
-# Função auxiliar para processar perguntas sobre semanas (semana atual ou anterior)
-def processar_semana(dataframe, coluna, pergunta):
-    hoje = pd.Timestamp.now()
-
-    # Verificar se é a semana atual
-    if "semana atual" in pergunta.lower():
-        inicio_semana = hoje - pd.Timedelta(days=hoje.weekday())  # Pega o início da semana (segunda-feira)
-        processos_semana = dataframe[(dataframe[coluna] >= inicio_semana) & (dataframe[coluna] <= hoje)]
-        quantidade = processos_semana.shape[0]
-        return f"Na semana atual, foram {quantidade} processos.", {
-            f"{coluna}_por_data": {str(k): v for k, v in processos_semana.groupby(dataframe[coluna].dt.date).size().to_dict().items()}
-        }
-
-    # Verificar se é a semana anterior
-    elif "semana anterior" in pergunta.lower() or "semana passada" in pergunta.lower():
-        inicio_semana_anterior = (hoje - pd.Timedelta(days=hoje.weekday())) - pd.Timedelta(weeks=1)
-        fim_semana_anterior = inicio_semana_anterior + pd.Timedelta(days=6)  # Fim da semana anterior (domingo)
-        processos_semana_anterior = dataframe[(dataframe[coluna] >= inicio_semana_anterior) & (dataframe[coluna] <= fim_semana_anterior)]
-        quantidade = processos_semana_anterior.shape[0]
-        return f"Na semana anterior, foram {quantidade} processos.", {
-            f"{coluna}_por_data": {str(k): v for k, v in processos_semana_anterior.groupby(dataframe[coluna].dt.date).size().to_dict().items()}
-        }
-
-    return "Não foi possível identificar a semana especificada.", {}
 
 # Função para contar o número de tokens
 def contar_tokens(texto):
@@ -181,11 +198,11 @@ def contar_tokens(texto):
 def consultar_gemini(pergunta, dataframe):
     # Configurar a API do Gemini
     genai.configure(api_key=os.environ["GEMINI_API_KEY"])  # Certifique-se de ter a chave de API do Gemini no seu .env
-    model = genai.GenerativeModel("gemini-1.5-pro")
+    model = genai.GenerativeModel("gemini-1.5-pro-001")
 
     # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
     contexto = dataframe.to_string(index=False)
-    prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nPergunta: {pergunta}\n\nResponda de forma direta e concisa, fornecendo apenas o resultado principal, por exemplo: Atualmente, há X processos ativos. sem detalhes extras."
+    prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nPergunta: {pergunta}\n\nResponda de forma concisa, fornecendo resultado de terceira pessoa, por exemplo: Atualmente, há X processos ativos."
 
     # Contar tokens no prompt
     tokens_enviados = contar_tokens(prompt)
@@ -200,6 +217,22 @@ def consultar_gemini(pergunta, dataframe):
         print(f"Tokens recebidos: {tokens_recebidos}")
 
         return response.text.strip()  # Extrair o texto da resposta
+    except Exception as e:
+        print(f"Erro ao consultar a API do Gemini: {e}")
+        return "Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde."
+    
+# Função específica para perguntas conversacionais
+def consultar_gemini_conversacional(pergunta):
+    # Configurar a API do Gemini para conversas genéricas
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"])  # Certifique-se de ter a chave de API do Gemini no seu .env
+    model = genai.GenerativeModel("gemini-1.5-pro-001")
+
+    prompt = f"Converse com o usuário e responda de maneira amigável e educada: {pergunta}"
+
+    try:
+        # Enviar a pergunta para o Gemini e obter uma resposta
+        response = model.generate_content(prompt)
+        return response.text.strip()
     except Exception as e:
         print(f"Erro ao consultar a API do Gemini: {e}")
         return "Desculpe, ocorreu um erro ao processar sua solicitação. Tente novamente mais tarde."

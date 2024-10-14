@@ -43,8 +43,11 @@ def handle_message(update: Update, context: CallbackContext) -> None:
         update.message.reply_text('Pergunta não fornecida!')
         return
 
-    resposta = processar_pergunta(pergunta_usuario, df)
-    update.message.reply_text(resposta)
+    # Processar a pergunta
+    resposta_texto, _ = processar_pergunta(pergunta_usuario, df)  # Ignorar os dados de gráfico para o Telegram
+
+    # Enviar apenas a resposta de texto
+    update.message.reply_text(resposta_texto)
 
 # Registrar os handlers no dispatcher
 dispatcher.add_handler(CommandHandler('start', start))
