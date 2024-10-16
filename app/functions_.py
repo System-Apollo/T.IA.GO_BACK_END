@@ -266,8 +266,10 @@ def processar_comarca_mais_preocupante(dataframe):
     # Extrair a comarca (município) da coluna 'Foro'
     dataframe['Comarca'] = dataframe['Foro'].apply(extrair_comarca)
 
-    # Limpar e converter a coluna 'Total deferido' para float, tratando apenas strings
-    dataframe['Total deferido'] = dataframe['Total deferido'].apply(lambda x: str(x) if isinstance(x, str) else x)
+    # Verificar se a coluna 'Total deferido' contém valores não-string e converter para string se necessário
+    dataframe['Total deferido'] = dataframe['Total deferido'].apply(lambda x: str(x) if pd.notnull(x) else x)
+
+    # Limpar e converter a coluna 'Total deferido' para float, tratando os valores corretamente
     dataframe['Total deferido'] = pd.to_numeric(
         dataframe['Total deferido']
         .str.replace('R$', '', regex=False)
@@ -286,6 +288,7 @@ def processar_comarca_mais_preocupante(dataframe):
     # Converter os dados para um formato gráfico
     dados_grafico = valor_condenacao_por_comarca.to_dict()
 
+    # Retornar a resposta e os dados do gráfico
     return f"A comarca com o maior valor de condenação é {comarca_mais_preocupante}, com um total de R$ {maior_valor:,.2f}.", {
         "valor_condenacao_por_comarca": dados_grafico  # Dados para o gráfico
     }
@@ -526,6 +529,10 @@ def processar_valor_total_causa(dataframe):
 
 
 def processar_media_valor_causa_por_estado(dataframe):
+    # Verificar se a coluna "Total da causa" é do tipo string e, se não for, converter para string
+    if dataframe['Total da causa'].dtype != 'object':
+        dataframe['Total da causa'] = dataframe['Total da causa'].astype(str)
+
     # Limpar e converter os valores na coluna "Total da causa"
     dataframe['Total da causa'] = pd.to_numeric(
         dataframe['Total da causa']
@@ -658,9 +665,10 @@ def processar_fase(dataframe, pergunta=None):
     }
 # Função auxiliar para processar perguntas sobre "Resultado da Sentença"
 def processar_sentenca(dataframe, pergunta):
+    # Contar a ocorrência dos diferentes resultados de sentença, normalizando para lowercase
     sentencas = dataframe['Resultado da Sentença'].str.lower().value_counts().to_dict()
 
-    # Dicionário de abreviações para as sentenças
+    # Dicionário de abreviações para os resultados das sentenças
     abreviacoes_sentencas = {
         "sentenca improcedente": "Improcedente",
         "sentenca de extincao sem resolucao do merito": "Sem resolução do mérito",
@@ -668,37 +676,17 @@ def processar_sentenca(dataframe, pergunta):
         "sentenca de homologacao de acordo": "Acordo"
     }
 
-    # Substituir as legendas pelas abreviações no dicionário de sentenças
+    # Substituir os nomes completos pelas abreviações no dicionário de sentenças
     sentencas_abreviadas = {abreviacoes_sentencas.get(key, key): value for key, value in sentencas.items()}
 
-    # Se a pergunta não especificar uma sentença particular, retorna todas as sentenças
-    if "sentença" in pergunta.lower():
-        sentencas_texto = ", ".join([f"{sentenca}: {quantidade}" for sentenca, quantidade in sentencas_abreviadas.items()])
-        return f"Os resultados das sentenças estão distribuídos da seguinte forma: {sentencas_texto}.", {
-            "sentencas": sentencas_abreviadas
-        }
-
-    # Termos comuns relacionados às sentenças
-    termos_sentenca = {
-        "extinção sem resolução do mérito": "Sem resolução do mérito",
-        "parcialmente procedente": "Procedente",
-        "improcedente": "Improcedente",
-        "homologação de acordo": "Acordo"
-    }
-
-    # Verificar se alguma sentença específica foi mencionada na pergunta
-    for termo, abreviado in termos_sentenca.items():
-        if termo in pergunta.lower():
-            quantidade = sentencas_abreviadas.get(abreviado, 0)  # Se não existir, retorna 0
-            return f"Atualmente, existem {quantidade} processos com o resultado de {abreviado}.", {
-                "sentencas": sentencas_abreviadas  # Sempre retornar todas as sentenças para gráficos
-            }
+    # Gerar o texto da resposta com a divisão dos resultados das sentenças
+    sentencas_texto = ", ".join([f"{sentenca}: {quantidade}" for sentenca, quantidade in sentencas_abreviadas.items()])
     
-    # Se a sentença específica não for reconhecida
-    return "O resultado de sentença especificado não foi encontrado. Os resultados disponíveis são: " + ", ".join(sentencas_abreviadas.keys()), {
+    # Retornar a resposta com a distribuição dos resultados
+    return f"Os resultados das sentenças estão distribuídos da seguinte forma: {sentencas_texto}.", {
         "sentencas": sentencas_abreviadas
     }
-
+    
 def processar_valor_acordo(dataframe):
     if 'Valor do acordo' in dataframe.columns:
         # Garantir que todos os valores estão no formato de string
