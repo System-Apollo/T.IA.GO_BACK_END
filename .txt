@@ -1,6 +1,6 @@
 DFN94ZAYQK8L8HHS48P9QX8M
 
-curl -F "url=https://ae46-187-32-212-210.ngrok-free.app/telegram_webhook" "https://api.telegram.org/bot7422503595:AAEuFBudgo31nMt-xcvctj83x5vAWQDqs-0/setWebhook"
+curl -F "url=https://c988-187-32-212-210.ngrok-free.app/telegram_webhook" "https://api.telegram.org/bot7422503595:AAEuFBudgo31nMt-xcvctj83x5vAWQDqs-0/setWebhook"
 curl -X GET "https://api.telegram.org/bot7422503595:AAEuFBudgo31nMt-xcvctj83x5vAWQDqs-0/deleteWebhook"
 
 QUAL MÉDIA DE DURAÇÃO DOS PROCESSOS ARQUIVADOS? - DATA ULTIMA MOVIMENTAÇÃO - DATA DISTRIBUIÇÃO verificar

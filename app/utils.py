@@ -2,6 +2,7 @@
 import pandas as pd
 import os
 import google.generativeai as genai
+from ratelimit import limits, sleep_and_retry
 from app.functions_ import *
 import unicodedata
 
@@ -42,9 +43,10 @@ def processar_pergunta(pergunta, dataframe):
     pergunta_lower = pergunta.lower().strip()
     
 
-    # Perguntas genéricas ou conversacionais
-    if any(greeting in pergunta_lower for greeting in ["olá", "como você está", "oi", "bom dia", "boa tarde", "boa noite"]):
-        chatgemini_resposta = consultar_gemini_conversacional(pergunta)
+    # Primeira verificação: se a pergunta for conversacional, retornar uma resposta apropriada
+    greetings = ["Olá", "Como você está", "Oi", "Bom dia", "Boa tarde", "Boa noite", "Como vc esta", "Tudo bem"]
+    if any(greeting in pergunta_lower for greeting in greetings):
+        chatgemini_resposta = f"Como posso te ajudar hoje?"
         return chatgemini_resposta, {}
 
     # Perguntas sobre valor total de acordos
@@ -181,11 +183,13 @@ def processar_pergunta(pergunta, dataframe):
         return consultar_gemini_conversacional(pergunta, dataframe), "Para encontrar o processo mais antigo, verifique a data de distribuição mais antiga no banco de dados."
 
     # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
-    chatgemini_resposta = consultar_gemini(pergunta, dataframe)
+    chatgemini_resposta = consultar_gemini_conversacional(pergunta, dataframe)
     return chatgemini_resposta, {}
 
 
-
+# Limites da API do ChatGemini
+RPM = 10  # 2 requisições por minuto
+RPD = 800  # 50 requisições por dia
 
 # Função para contar o número de tokens
 def contar_tokens(texto):
@@ -193,10 +197,17 @@ def contar_tokens(texto):
     # Você pode ajustar isso para ser mais preciso com base no comportamento do modelo
     return len(texto.split())
 
-# Função para consultar o Gemini com o contexto dos dados do Excel
+# Configurar a API do Gemini
+def configurar_gemini():
+    genai.configure(api_key=os.environ["GEMINI_API_KEY"]) # Certifique-se de ter a chave de API do Gemini no seu .env
+    
+    
+# Limitar a taxa de requisições a 2 por minuto (RPM) e 50 por dia (rPD)
+@sleep_and_retry
+@limits(calls=RPM, period=60)  # Limite de 2 chamadas por minuto
+@limits(calls=RPD, period=86400)  # Limite de 50 chamadas por dia
 def consultar_gemini(pergunta, dataframe):
-    # Configurar a API do Gemini
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])  # Certifique-se de ter a chave de API do Gemini no seu .env
+    configurar_gemini() 
     model = genai.GenerativeModel("gemini-1.5-pro-001")
 
     # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
@@ -210,32 +221,64 @@ def consultar_gemini(pergunta, dataframe):
     try:
         # Enviar a pergunta com o contexto para o Gemini
         response = model.generate_content(prompt)
-
         # Contar tokens na resposta
         tokens_recebidos = contar_tokens(response.text)
         print(f"Tokens recebidos: {tokens_recebidos}")
-
         return response.text.strip()  # Extrair o texto da resposta
+    
     except Exception as e:
         print(f"Erro ao consultar a API do Gemini: {e}")
         return "Desculpe, não conseguir processar sua solicitação. Mais irei melhora meu banco de dados."
     
 # Função específica para perguntas conversacionais
+# Conversações simples com limite de requisições
+@sleep_and_retry
+@limits(calls=RPM, period=60)
+@limits(calls=RPD, period=86400)
 def consultar_gemini_conversacional(pergunta, dataframe):
     # Configurar a API do Gemini para conversas genéricas
-    genai.configure(api_key=os.environ["GEMINI_API_KEY"])  # Certifique-se de ter a chave de API do Gemini no seu .env
+    configurar_gemini()  # Certifique-se de ter a chave de API do Gemini no seu .env
     model = genai.GenerativeModel("gemini-1.5-pro-001")
     
     # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
     contexto = dataframe.to_string(index=False)
-
-
-    prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nConverse com o usuário e responda de maneira amigável e educada: {pergunta}"
+    prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nConverse com o usuário e responda de maneira amigável e educada, nao me traga emojis: {pergunta}"
+    # Contar tokens no prompt
+    tokens_enviados = contar_tokens(prompt)
+    print(f"Tokens enviados: {tokens_enviados}")
+    try:
+        # Enviar a pergunta para o Gemini e obter uma resposta
+        response = model.generate_content(prompt)
+        tokens_recebidos = contar_tokens(response.text)
+        print(f"Tokens recebidos: {tokens_recebidos}")
+        return response.text.strip()
+    except Exception as e:
+        print(f"Erro ao consultar a API do Gemini: {e}")
+        return "Desculpe, Por eu ser novo aqui ainda estou aprimorando meu banco, pergunte novamente daqui alguns segundos."
+    
+# Conversações simples com limite de requisições
+@sleep_and_retry
+@limits(calls=RPM, period=60)
+@limits(calls=RPD, period=86400)
+def consultar_gemini_conversacional_simples(pergunta):
+    # Configurar a API do Gemini para conversas genéricas
+    configurar_gemini()  # Certifique-se de ter a chave de API do Gemini no seu .env
+    model = genai.GenerativeModel("gemini-1.5-pro-001")
+    
+    # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
+    
+    prompt = f"Converse com o usuário e responda de maneira amigável e educada e não me traga emojis: {pergunta}"
+    
+    # Contar tokens no prompt
+    tokens_enviados = contar_tokens(prompt)
+    print(f"Tokens enviados: {tokens_enviados}")
 
     try:
         # Enviar a pergunta para o Gemini e obter uma resposta
         response = model.generate_content(prompt)
+        tokens_recebidos = contar_tokens(response.text)
+        print(f"Tokens recebidos: {tokens_recebidos}")
         return response.text.strip()
     except Exception as e:
         print(f"Erro ao consultar a API do Gemini: {e}")
-        return "Desculpe, não conseguir processar sua solicitação. Mais irei melhora mais meu banco de dados."
+        return "Desculpe, Por eu ser novo aqui ainda estou aprimorando meu banco, pergunte novamente daqui alguns segundos."
