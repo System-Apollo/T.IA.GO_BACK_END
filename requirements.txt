@@ -2,7 +2,7 @@ Flask
 flask-cors
 flask[async]
 Flask-Caching
-python-telegram-bot==20.3
+python-telegram-bot==13.5
 python-telegram-bot[passport,urllib3,socks]
 python-dotenv
 google-generativeai
