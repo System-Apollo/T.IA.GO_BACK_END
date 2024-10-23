@@ -138,7 +138,7 @@ def iniciar_bot_telegram(token, webhook_url):
     bot.set_webhook(url=webhook_url)
     logging.info(f"Webhook configurado para: {webhook_url}")
 
-@main.route('/inicial', methods=['GET'])
+@main.route('/', methods=['GET'])
 def tela_inicial():
     return jsonify({"mensagem": "Bem-vindo à tela inicial!"}), 200
 

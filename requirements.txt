@@ -6,6 +6,7 @@ python-telegram-bot==13.5
 python-telegram-bot[passport,urllib3,socks]
 python-dotenv
 google-generativeai
+gunicorn
 ratelimit
 pandas
 openpyxl
