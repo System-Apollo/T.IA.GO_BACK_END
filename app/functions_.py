@@ -5,7 +5,10 @@ import re
 import locale
 
 # Definir a localidade para o formato brasileiro
-locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')  # Ajuste para o sistema onde está rodando, pode ser necessário instalar o locale 'pt_BR'
+try:
+    locale.setlocale(locale.LC_ALL, 'pt_BR.UTF-8')
+except locale.Error:
+    locale.setlocale(locale.LC_ALL, '')  # Ajuste para o sistema onde está rodando, pode ser necessário instalar o locale 'pt_BR'
 
 
 # Função para processar o status do caso ou processo de um autor específico
