@@ -500,9 +500,10 @@ def processar_sentenca(dataframe, pergunta):
 
 # Função para processar o valor total da causa
 def processar_valor_total_causa(dataframe):
-    # Converter a coluna 'Total da causa' para valores numéricos (removendo símbolos de moeda e ajustando formatação)
+    # Converter a coluna 'Total da causa' para string e depois para valores numéricos (removendo símbolos de moeda e ajustando formatação)
     dataframe['Total da causa'] = pd.to_numeric(
         dataframe['Total da causa']
+        .astype(str)  # Converte todos os valores da coluna para string
         .str.replace('R$', '', regex=False)
         .str.replace('.', '', regex=False)
         .str.replace(',', '.', regex=False), errors='coerce'
@@ -525,10 +526,12 @@ def processar_valor_total_causa(dataframe):
                      f"Total de ativos: R$ {total_ativos_formatado}.\n" \
                      f"Total de arquivados: R$ {total_arquivados_formatado}."
 
+    # Convertendo para int ou float para JSON serializable
     return resposta_texto, {
-        "ativos": total_ativos,
-        "arquivados": total_arquivados
+        "ativos": float(total_ativos),  # Conversão para tipo nativo
+        "arquivados": float(total_arquivados)  # Conversão para tipo nativo
     }
+
 
 
 def processar_media_valor_causa_por_estado(dataframe):

@@ -5,6 +5,7 @@ import google.generativeai as genai
 from ratelimit import limits, sleep_and_retry
 from app.functions_ import *
 import unicodedata
+from app.map import categoria_perguntas
 
 # Função para carregar e preparar os dados do Excel
 def carregar_dados(file):
@@ -39,152 +40,87 @@ def processar_pergunta(pergunta, dataframe):
     # Normalizar a pergunta para lidar com acentos, pontuação e maiúsculas
     pergunta_normalizada = normalizar_pergunta(pergunta)
     
-    hoje = pd.Timestamp.now()
-    pergunta_lower = pergunta.lower().strip()
-    
+    # Verificar se a pergunta é conversacional
+    greetings = ["olá", "como você está", "oi", "bom dia", "boa tarde", "boa noite", "tudo bem"]
+    if any(greeting in pergunta_normalizada.lower() for greeting in greetings):
+        return "Como posso te ajudar hoje?", {}
 
-    # Primeira verificação: se a pergunta for conversacional, retornar uma resposta apropriada
-    greetings = ["Olá", "Como você está", "Oi", "Bom dia", "Boa tarde", "Boa noite", "Como vc esta", "Tudo bem"]
-    if any(greeting in pergunta_lower for greeting in greetings):
-        chatgemini_resposta = f"Como posso te ajudar hoje?"
-        return chatgemini_resposta, {}
-
-    # Perguntas sobre valor total de acordos
-    if "valor total de acordos" in pergunta_normalizada:
-        return processar_valor_acordo(dataframe)
-
-    # Perguntas sobre valor de condenação por estado
-    elif "valor de condenacao por estado" in pergunta_normalizada:
-        return processar_valor_condenacao_por_estado(dataframe)
-
-    # Perguntas sobre qual estado tem o maior valor de causa
-    elif "estado com maior valor de causa" in pergunta_normalizada:
-        return processar_maior_valor_causa_por_estado(dataframe)
-
-    # Perguntas sobre qual estado tem a maior média de valor de causa
-    elif "estado com maior media de valor de causa" in pergunta_normalizada:
-        return processar_media_valor_causa_por_estado(dataframe)
-
-    # Perguntas sobre divisão dos resultados dos processos
-    elif "divididos os resultados dos processos" in pergunta_normalizada:
-        return processar_sentenca(dataframe, pergunta)
-
-    # Perguntas sobre processos que transitaram em julgado
-    elif "transitaram em julgado" in pergunta_normalizada:
-        return processar_transito_julgado(dataframe)
-    
-    # Perguntas sobre quantidade de processos por estado
-    elif "quantidade de processos por estado" in pergunta_normalizada:
-        return processar_quantidade_processos_por_estado(dataframe)
-
-    # Perguntas sobre quantidade total de processos
-    elif "quantidade de processos" in pergunta_normalizada:
-        return processar_quantidade_processos(dataframe)
-
-
-    # Perguntas sobre valor total da causa
-    elif "valor total da causa" in pergunta_normalizada:
-        return processar_valor_total_causa(dataframe)
-
-    # Perguntas sobre quantidade de processos ativos
-    elif "quantos processos ativos" in pergunta_normalizada:
-        return processar_status(pergunta, dataframe, "ativo")
-
-    # Perguntas sobre quantidade de processos arquivados
-    elif "quantos processos arquivados" in pergunta_normalizada:
-        return processar_status(pergunta, dataframe, "arquivado")
-
-    # Perguntas sobre quantidade de recursos interpostos
-    elif "quantos recursos foram interpostos" in pergunta_normalizada:
-        return processar_quantidade_recursos(dataframe)
-
-    # Perguntas sobre a divisão dos resultados das sentenças
-    elif "divisao dos resultados das sentencas" in pergunta_normalizada:
-        return processar_sentenca(dataframe, pergunta)
-
-    # Perguntas sobre os assuntos mais recorrentes
-    elif "assuntos mais recorrentes" in pergunta_normalizada:
-        return processar_assuntos_recorrentes(dataframe)
-
-    # Perguntas sobre tribunal com mais ações sobre convenções coletivas
-    elif "tribunal tem mais acoes sobre convencoes coletivas" in pergunta_normalizada:
-        return processar_tribunal_acoes_convenções(dataframe)
-
-    # Perguntas sobre processos no rito sumaríssimo
-    elif "rito sumarisimo" in pergunta_normalizada:
-        return processar_rito(dataframe)
-
-    # Perguntas sobre a divisão por fase
-    elif "divisao por fase" in pergunta_normalizada:
-        return processar_fase(dataframe)
-
-    # Perguntas sobre reclamantes com mais de um processo
-    elif "algum reclamante tem mais de um processo" in pergunta_normalizada:
-        return processar_reclamantes_multiplos(dataframe)
-
-    # Perguntas sobre qual estado devo ter mais preocupação ou qual estado mais ofensor
-    elif "estado devo ter mais preocupacao" in pergunta_normalizada or "estado mais ofensor" in pergunta_normalizada:
-        return processar_estado_mais_ofensor(dataframe)
-
-    # Perguntas sobre qual comarca devo ter mais preocupação ou qual comarca mais ofensora
-    elif "comarca devo ter mais preocupacao" in pergunta_normalizada or "comarca mais ofensora" in pergunta_normalizada:
-        return processar_comarca_mais_preocupante(dataframe)
-
-    # Perguntas sobre melhor estratégia para aplicar nesse estado
-    elif "melhor estrategia para aplicar nesse estado" in pergunta_normalizada:
-        return consultar_gemini_conversacional(pergunta, dataframe), "Essa pergunta envolve uma análise mais detalhada e política de acordo. Por favor, entre em contato com o setor responsável."
-
-    # Perguntas sobre o benefício econômico da carteira
-    elif "beneficio economico da carteira" in pergunta_normalizada:
-        return consultar_gemini_conversacional(pergunta, dataframe), "Para calcular o benefício econômico, subtraia o valor da condenação do valor da causa."
-
-    # Perguntas sobre o benefício econômico por estado
-    elif "beneficio economico por estado" in pergunta_normalizada:
-        return consultar_gemini_conversacional(pergunta, dataframe), "Para calcular o benefício econômico por estado, subtraia o valor da condenação pelo valor da causa em cada estado."
-
-    # Perguntas sobre a idade da carteira
-    elif "idade da carteira" in pergunta_normalizada:
-        return consultar_gemini_conversacional(pergunta, dataframe),"Para determinar a idade da carteira, consulte os dados de abertura e finalização dos processos."
-
-    # Perguntas sobre o estado com maior média de duração
-    elif "estado com maior media de duracao" in pergunta_normalizada:
-        return processar_media_duracao_por_estado(dataframe)
-
-    # Perguntas sobre a comarca com maior média de duração
-    elif "comarca com maior media de duracao" in pergunta_normalizada:
-        return processar_media_duracao_por_comarca(dataframe)
-
-    # Perguntas sobre processos improcedentes
-    elif "quantos processos improcedentes" in pergunta_normalizada:
-        return processar_sentencas_improcedentes(dataframe)
-
-    # Perguntas sobre processos extintos sem custos
-    elif "quantos processos extinto sem custos" in pergunta_normalizada:
-        return processar_sentencas_extinto_sem_custos(dataframe)
-
-    # Perguntas sobre processo com maior tempo sem movimentação
-    elif "processo com maior tempo sem movimentacao" in pergunta_normalizada:
-        return processar_maior_tempo_sem_movimentacao(dataframe)
-
-    # Perguntas sobre divisão por rito
-    elif "como esta a divisao por rito" in pergunta_normalizada:
-        return processar_divisao_por_rito(dataframe)
-
-    # Perguntas sobre processos ainda não julgados
-    elif "quantos processos ainda nao foram julgados" in pergunta_normalizada:
-        return processar_nao_julgados(dataframe)
-
-    # Perguntas sobre processos ainda não citados
-    elif "quantos processos ainda nao foram citados" in pergunta_normalizada:
-        return processar_nao_citados(dataframe)
-
-    # Perguntas sobre o processo mais antigo da base
-    elif "processo mais antigo da base" in pergunta_normalizada:
-        return consultar_gemini_conversacional(pergunta, dataframe), "Para encontrar o processo mais antigo, verifique a data de distribuição mais antiga no banco de dados."
+    # Iterar sobre as categorias de perguntas
+    for categoria, padroes in categoria_perguntas.items():
+        for padrao in padroes:
+            if re.search(padrao, pergunta_normalizada, re.IGNORECASE):
+                # Chamar a função apropriada com base na categoria identificada
+                if categoria == 'valor_total_acordos':
+                    return processar_valor_acordo(dataframe)
+                elif categoria == 'valor_condenacao_estado':
+                    return processar_valor_condenacao_por_estado(dataframe)
+                elif categoria == 'estado_maior_valor_causa':
+                    return processar_maior_valor_causa_por_estado(dataframe)
+                elif categoria == 'estado_maior_media_valor_causa':
+                    return processar_media_valor_causa_por_estado(dataframe)
+                elif categoria == 'divisao_resultados_processos':
+                    return processar_sentenca(dataframe, pergunta)
+                elif categoria == 'transitaram_julgado':
+                    return processar_transito_julgado(dataframe)
+                elif categoria == 'quantidade_processos_estado':
+                    return processar_quantidade_processos_por_estado(dataframe)
+                elif categoria == 'quantidade_total_processos':
+                    return processar_quantidade_processos(dataframe)
+                elif categoria == 'valor_total_causa':
+                    return processar_valor_total_causa(dataframe)
+                elif categoria == 'processos_ativos':
+                    return processar_status(pergunta, dataframe, "ativo")
+                elif categoria == 'processos_arquivados':
+                    return processar_status(pergunta, dataframe, "arquivado")
+                elif categoria == 'quantidade_recursos':
+                    return processar_quantidade_recursos(dataframe)
+                elif categoria == 'sentencas':
+                    return processar_sentenca(dataframe, pergunta)
+                elif categoria == 'assuntos_recorrentes':
+                    return processar_assuntos_recorrentes(dataframe)
+                elif categoria == 'tribunal_acoes_convencoes':
+                    return processar_tribunal_acoes_convenções(dataframe)
+                elif categoria == 'rito_sumarisimo':
+                    return processar_rito(dataframe)
+                elif categoria == 'divisao_fase':
+                    return processar_fase(dataframe)
+                elif categoria == 'reclamantes_multiplos':
+                    return processar_reclamantes_multiplos(dataframe)
+                elif categoria == 'estado_mais_ofensor':
+                    return processar_estado_mais_ofensor(dataframe)
+                elif categoria == 'comarca_mais_ofensora':
+                    return processar_comarca_mais_preocupante(dataframe)
+                elif categoria == 'melhor_estrategia':
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Essa pergunta envolve uma análise mais detalhada e política de acordo. Por favor, entre em contato com o setor responsável."
+                elif categoria == 'beneficio_economico_carteira':
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para calcular o benefício econômico, subtraia o valor da condenação do valor da causa."
+                elif categoria == 'beneficio_economico_estado':
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para calcular o benefício econômico por estado, subtraia o valor da condenação pelo valor da causa em cada estado."
+                elif categoria == 'idade_carteira':
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para determinar a idade da carteira, consulte os dados de abertura e finalização dos processos."
+                elif categoria == 'maior_media_duracao_estado':
+                    return processar_media_duracao_por_estado(dataframe)
+                elif categoria == 'maior_media_duracao_comarca':
+                    return processar_media_duracao_por_comarca(dataframe)
+                elif categoria == 'processos_improcedentes':
+                    return processar_sentencas_improcedentes(dataframe)
+                elif categoria == 'processos_extintos_sem_custos':
+                    return processar_sentencas_extinto_sem_custos(dataframe)
+                elif categoria == 'processo_maior_tempo_sem_movimentacao':
+                    return processar_maior_tempo_sem_movimentacao(dataframe)
+                elif categoria == 'divisao_por_rito':
+                    return processar_divisao_por_rito(dataframe)
+                elif categoria == 'processos_nao_julgados':
+                    return processar_nao_julgados(dataframe)
+                elif categoria == 'processos_nao_citados':
+                    return processar_nao_citados(dataframe)
+                elif categoria == 'processo_mais_antigo':
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para encontrar o processo mais antigo, verifique a data de distribuição mais antiga no banco de dados."
 
     # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
     chatgemini_resposta = consultar_gemini_conversacional(pergunta, dataframe)
     return chatgemini_resposta, {}
+
 
 
 # Limites da API do ChatGemini
