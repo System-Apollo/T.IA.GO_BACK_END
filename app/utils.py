@@ -104,6 +104,8 @@ def processar_pergunta(pergunta, dataframe):
                     return processar_media_duracao_por_comarca(dataframe)
                 elif categoria == 'processos_improcedentes':
                     return processar_sentencas_improcedentes(dataframe)
+                elif categoria == 'processos_procedentes':
+                    return processar_sentencas_procedentes(dataframe)
                 elif categoria == 'processos_extintos_sem_custos':
                     return processar_sentencas_extinto_sem_custos(dataframe)
                 elif categoria == 'processo_maior_tempo_sem_movimentacao':

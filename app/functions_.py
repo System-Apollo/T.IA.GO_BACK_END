@@ -161,6 +161,32 @@ def processar_sentencas_improcedentes(dataframe):
     return f"Há {quantidade_improcedentes} processos com sentença improcedente.", {
         "sentencas": sentencas_abreviadas
     }
+    
+def processar_sentencas_procedentes(dataframe):
+    # Converter a coluna 'Resultado da Sentença' para minúsculas para garantir consistência
+    dataframe['Resultado da Sentença'] = dataframe['Resultado da Sentença'].str.lower()
+
+    # Contar a quantidade de sentenças improcedentes
+    quantidade_improcedentes = dataframe[dataframe['Resultado da Sentença'] == 'sentenca parcialmente procedente'].shape[0]
+
+    # Contar todos os tipos de sentenças para o gráfico
+    sentencas_contagem = dataframe['Resultado da Sentença'].value_counts().to_dict()
+
+    # Abreviações das sentenças para o gráfico
+    abreviacoes_sentencas = {
+        "sentenca improcedente": "Improcedente",
+        "sentenca de extincao sem resolucao do merito": "Sem resolução do mérito",
+        "sentenca parcialmente procedente": "Procedente",
+        "sentenca de homologacao de acordo": "Acordo"
+    }
+
+    # Substituir as legendas pelas abreviações no dicionário de sentenças
+    sentencas_abreviadas = {abreviacoes_sentencas.get(key, key): value for key, value in sentencas_contagem.items()}
+
+    # Retornar a resposta e os dados para o gráfico
+    return f"Há {quantidade_improcedentes} processos com sentença procedente.", {
+        "sentencas": sentencas_abreviadas
+    }
 
 
 def processar_media_duracao_por_estado(dataframe):

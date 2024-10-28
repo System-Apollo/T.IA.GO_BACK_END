@@ -44,7 +44,8 @@ categoria_perguntas['transitaram_julgado'] = [
 categoria_perguntas['quantidade_processos_estado'] = [
     r"quantidade de processos por estado", 
     r"quantos processos existem em cada estado", 
-    r"numero de processos por estado"
+    r"numero de processos por estado",
+    r"quantos processos por estado",
 ]
 
 categoria_perguntas['quantidade_total_processos'] = [
@@ -62,6 +63,7 @@ categoria_perguntas['valor_total_causa'] = [
 categoria_perguntas['processos_ativos'] = [
     r"quantos processos ativos", 
     r"processos ativos", 
+    r"quantos processos tenho ativos", 
     r"numero de processos ativos"
 ]
 
@@ -154,7 +156,18 @@ categoria_perguntas['maior_media_duracao_comarca'] = [
 
 categoria_perguntas['processos_improcedentes'] = [
     r"quantos processos improcedentes", 
-    r"processos julgados improcedentes"
+    r"quantos processos improcedente", 
+    r"processos julgados improcedentes",
+    r"quais os processos foram improcedentes",
+    r"quais os processos foram improcedente",
+    r"processos improcedentes"
+]
+categoria_perguntas['processos_procedentes'] = [
+    r"quantos processos procedentes", 
+    r"processos julgados procedentes",
+    r"quais os processos foram procedentes",
+    r"quais os processos foram procedente",
+    r"processos procedentes"
 ]
 
 categoria_perguntas['processos_extintos_sem_custos'] = [
