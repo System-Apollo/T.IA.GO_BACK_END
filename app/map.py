@@ -120,7 +120,7 @@ categoria_perguntas['estado_mais_ofensor'] = [
 categoria_perguntas['comarca_mais_ofensora'] = [
     r"comarca devo ter mais preocupacao", 
     r"comarca mais ofensora", 
-    r"qual comarca é a mais preocupante"
+    r"qual comarca é a mais preocupante" 
 ]
 
 categoria_perguntas['melhor_estrategia'] = [
