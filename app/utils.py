@@ -135,6 +135,7 @@ def processar_pergunta(pergunta, dataframe):
     # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
     chatgemini_resposta = consultar_gemini_conversacional(pergunta, dataframe)
     historico_conversa.append({"Usuário": pergunta, "TIAGO": chatgemini_resposta})
+    print(historico_conversa)
     return chatgemini_resposta, {}
 
 
@@ -154,32 +155,32 @@ def configurar_gemini():
     
     
 # Limitar a taxa de requisições a 2 por minuto (RPM) e 50 por dia (rPD)
-@sleep_and_retry
-@limits(calls=RPM, period=60)  # Limite de 2 chamadas por minuto
-@limits(calls=RPD, period=86400)  # Limite de 50 chamadas por dia
-def consultar_gemini(pergunta, dataframe):
-    configurar_gemini() 
-    model = genai.GenerativeModel("gemini-1.5-pro-001")
-
-    # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
-    contexto = dataframe.to_string(index=False)
-    prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nPergunta: {pergunta}\n\nResponda de forma concisa, fornecendo resultado de terceira pessoa, por exemplo: Atualmente, há X processos ativos."
-
-    # Contar tokens no prompt
-    tokens_enviados = contar_tokens(prompt)
-    print(f"Tokens enviados: {tokens_enviados}")
-
-    try:
-        # Enviar a pergunta com o contexto para o Gemini
-        response = model.generate_content(prompt)
-        # Contar tokens na resposta
-        tokens_recebidos = contar_tokens(response.text)
-        print(f"Tokens recebidos: {tokens_recebidos}")
-        return response.text.strip()  # Extrair o texto da resposta
-    
-    except Exception as e:
-        print(f"Erro ao consultar a API do Gemini: {e}")
-        return "Desculpe, não conseguir processar sua solicitação. Mais irei melhora meu banco de dados."
+# @sleep_and_retry
+# @limits(calls=RPM, period=60)  # Limite de 2 chamadas por minuto
+# @limits(calls=RPD, period=86400)  # Limite de 50 chamadas por dia
+# def consultar_gemini(pergunta, dataframe):
+#     configurar_gemini()
+#     model = genai.GenerativeModel("gemini-1.5-pro-001")
+#
+#     # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
+#     contexto = dataframe.to_string(index=False)
+#     prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nPergunta: {pergunta}\n\nResponda de forma concisa, fornecendo resultado de terceira pessoa, por exemplo: Atualmente, há X processos ativos."
+#
+#     # Contar tokens no prompt
+#     tokens_enviados = contar_tokens(prompt)
+#     print(f"Tokens enviados: {tokens_enviados}")
+#
+#     try:
+#         # Enviar a pergunta com o contexto para o Gemini
+#         response = model.generate_content(prompt)
+#         # Contar tokens na resposta
+#         tokens_recebidos = contar_tokens(response.text)
+#         print(f"Tokens recebidos: {tokens_recebidos}")
+#         return response.text.strip()  # Extrair o texto da resposta
+#
+#     except Exception as e:
+#         print(f"Erro ao consultar a API do Gemini: {e}")
+#         return "Desculpe, não conseguir processar sua solicitação. Mais irei melhora meu banco de dados."
     
 # Função específica para perguntas conversacionais
 # Conversações simples com limite de requisições
@@ -193,7 +194,9 @@ def consultar_gemini_conversacional(pergunta, dataframe):
     
     # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
     contexto = dataframe.to_string(index=False)
-    prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nConverse com o usuário e responda de maneira amigável e educada, nao me traga emojis: {pergunta}"
+    contexto_conversa = "\n".join([f"{msg['Usuário']}: {msg['TIAGO']}" for msg in historico_conversa[-5:]])
+    # prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nConverse com o usuário e responda de maneira amigável e educada, nao me traga emojis: {pergunta}"
+    prompt = f"Contexto da conversa:\n{contexto_conversa}\n\nDados do Excel:\n{contexto}\n\nPergunta atual: {pergunta}\n\nConverse com o usuário e responda de maneira amigável e eduacada e sem trazer emojis!"
     # Contar tokens no prompt
     tokens_enviados = contar_tokens(prompt)
     print(f"Tokens enviados: {tokens_enviados}")
