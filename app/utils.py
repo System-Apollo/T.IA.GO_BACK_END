@@ -46,97 +46,91 @@ def processar_pergunta(pergunta, dataframe):
     # Verificar se a pergunta é conversacional
     greetings = ["olá", "como você está", "oi", "bom dia", "boa tarde", "boa noite", "tudo bem"]
     if any(greeting in pergunta_normalizada.lower() for greeting in greetings):
-        resposta = "Como posso te ajudar hoje?"
-        historico_conversa.append({"Usuário": pergunta, "TIAGO": resposta})
-        return resposta, {}
+        resposta_texto = "Como posso te ajudar hoje?"
+        historico_conversa.append({"Usuário": pergunta, "TIAGO": resposta_texto})
+        return resposta_texto, {}
 
-    # Iterar sobre as categorias de perguntas
     for categoria, padroes in categoria_perguntas.items():
         for padrao in padroes:
             if re.search(padrao, pergunta_normalizada, re.IGNORECASE):
                 # Chamar a função apropriada com base na categoria identificada
                 if categoria == 'valor_total_acordos':
-                    resposta = processar_valor_acordo(dataframe)
+                    return processar_valor_acordo(dataframe)
                 elif categoria == 'valor_condenacao_estado':
-                    resposta = processar_valor_condenacao_por_estado(dataframe)
+                    return processar_valor_condenacao_por_estado(dataframe)
                 elif categoria == 'estado_maior_valor_causa':
-                    resposta = processar_maior_valor_causa_por_estado(dataframe)
+                    return processar_maior_valor_causa_por_estado(dataframe)
                 elif categoria == 'estado_maior_media_valor_causa':
-                    resposta = processar_media_valor_causa_por_estado(dataframe)
+                    return processar_media_valor_causa_por_estado(dataframe)
                 elif categoria == 'divisao_resultados_processos':
-                    resposta = processar_sentenca(dataframe, pergunta)
+                    return processar_sentenca(dataframe, pergunta)
                 elif categoria == 'transitaram_julgado':
-                    resposta = processar_transito_julgado(dataframe)
+                    return processar_transito_julgado(dataframe)
                 elif categoria == 'quantidade_processos_estado':
-                    resposta = processar_quantidade_processos_por_estado(dataframe)
+                    return processar_quantidade_processos_por_estado(dataframe)
                 elif categoria == 'quantidade_total_processos':
-                    resposta = processar_quantidade_processos(dataframe)
+                    return processar_quantidade_processos(dataframe)
                 elif categoria == 'valor_total_causa':
-                    resposta = processar_valor_total_causa(dataframe)
+                    return processar_valor_total_causa(dataframe)
                 elif categoria == 'processos_ativos':
-                    resposta = processar_status(pergunta, dataframe, "ativo")
+                    return processar_status(pergunta, dataframe, "ativo")
                 elif categoria == 'processos_arquivados':
-                    resposta = processar_status(pergunta, dataframe, "arquivado")
+                    return processar_status(pergunta, dataframe, "arquivado")
                 elif categoria == 'quantidade_recursos':
-                    resposta = processar_quantidade_recursos(dataframe)
+                    return processar_quantidade_recursos(dataframe)
                 elif categoria == 'sentencas':
-                    resposta = processar_sentenca(dataframe, pergunta)
+                    return processar_sentenca(dataframe, pergunta)
                 elif categoria == 'assuntos_recorrentes':
-                    resposta = processar_assuntos_recorrentes(dataframe)
+                    return processar_assuntos_recorrentes(dataframe)
                 elif categoria == 'tribunal_acoes_convencoes':
-                    resposta = processar_tribunal_acoes_convenções(dataframe)
+                    return processar_tribunal_acoes_convenções(dataframe)
                 elif categoria == 'rito_sumarisimo':
-                    resposta = processar_rito(dataframe)
+                    return processar_rito(dataframe)
                 elif categoria == 'divisao_fase':
-                    resposta = processar_fase(dataframe)
+                    return processar_fase(dataframe)
                 elif categoria == 'reclamantes_multiplos':
-                    resposta = processar_reclamantes_multiplos(dataframe)
+                    return processar_reclamantes_multiplos(dataframe)
                 elif categoria == 'estado_mais_ofensor':
-                    resposta = processar_estado_mais_ofensor(dataframe)
+                    return processar_estado_mais_ofensor(dataframe)
                 elif categoria == 'comarca_mais_ofensora':
-                    resposta = processar_comarca_mais_preocupante(dataframe)
+                    return processar_comarca_mais_preocupante(dataframe)
                 elif categoria == 'melhor_estrategia':
-                    resposta = (consultar_gemini_conversacional(pergunta, dataframe), 
-                                "Essa pergunta envolve uma análise mais detalhada e política de acordo. Por favor, entre em contato com o setor responsável.")
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Essa pergunta envolve uma análise mais detalhada e política de acordo. Por favor, entre em contato com o setor responsável."
                 elif categoria == 'beneficio_economico_carteira':
-                    resposta = (consultar_gemini_conversacional(pergunta, dataframe), 
-                                "Para calcular o benefício econômico, subtraia o valor da condenação do valor da causa.")
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para calcular o benefício econômico, subtraia o valor da condenação do valor da causa."
                 elif categoria == 'beneficio_economico_estado':
-                    resposta = (consultar_gemini_conversacional(pergunta, dataframe), 
-                                "Para calcular o benefício econômico por estado, subtraia o valor da condenação pelo valor da causa em cada estado.")
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para calcular o benefício econômico por estado, subtraia o valor da condenação pelo valor da causa em cada estado."
                 elif categoria == 'idade_carteira':
-                    resposta = (consultar_gemini_conversacional(pergunta, dataframe), 
-                                "Para determinar a idade da carteira, consulte os dados de abertura e finalização dos processos.")
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para determinar a idade da carteira, consulte os dados de abertura e finalização dos processos."
                 elif categoria == 'maior_media_duracao_estado':
-                    resposta = processar_media_duracao_por_estado(dataframe)
+                    return processar_media_duracao_por_estado(dataframe)
                 elif categoria == 'maior_media_duracao_comarca':
-                    resposta = processar_media_duracao_por_comarca(dataframe)
+                    return processar_media_duracao_por_comarca(dataframe)
                 elif categoria == 'processos_improcedentes':
-                    resposta = processar_sentencas_improcedentes(dataframe)
+                    return processar_sentencas_improcedentes(dataframe)
                 elif categoria == 'processos_procedentes':
-                    resposta = processar_sentencas_procedentes(dataframe)
+                    return processar_sentencas_procedentes(dataframe)
                 elif categoria == 'processos_extintos_sem_custos':
-                    resposta = processar_sentencas_extinto_sem_custos(dataframe)
+                    return processar_sentencas_extinto_sem_custos(dataframe)
                 elif categoria == 'processo_maior_tempo_sem_movimentacao':
-                    resposta = processar_maior_tempo_sem_movimentacao(dataframe)
+                    return processar_maior_tempo_sem_movimentacao(dataframe)
                 elif categoria == 'divisao_por_rito':
-                    resposta = processar_divisao_por_rito(dataframe)
+                    return processar_divisao_por_rito(dataframe)
                 elif categoria == 'processos_nao_julgados':
-                    resposta = processar_nao_julgados(dataframe)
+                    return processar_nao_julgados(dataframe)
                 elif categoria == 'processos_nao_citados':
-                    resposta = processar_nao_citados(dataframe)
+                    return processar_nao_citados(dataframe)
                 elif categoria == 'processo_mais_antigo':
-                    resposta = (consultar_gemini_conversacional(pergunta, dataframe), 
-                                "Para encontrar o processo mais antigo, verifique a data de distribuição mais antiga no banco de dados.")
-                
-                historico_conversa.append({"Usuário": pergunta, "TIAGO": resposta})
-                return resposta, {}
+                    return consultar_gemini_conversacional(pergunta, dataframe), "Para encontrar o processo mais antigo, verifique a data de distribuição mais antiga no banco de dados."
+
+                # Para cada categoria, verificar se a função retorna um gráfico ou uma string
+                historico_conversa.append({"Usuário": pergunta, "TIAGO": resposta_texto})
+                return resposta_texto, {}
 
     # Se a pergunta não puder ser processada diretamente, enviar para o Gemini
     chatgemini_resposta = consultar_gemini_conversacional(pergunta, dataframe)
     historico_conversa.append({"Usuário": pergunta, "TIAGO": chatgemini_resposta})
-    print(historico_conversa)
-    return chatgemini_resposta, {}
+    return chatgemini_resposta, {}  # Retorna string do Gemini com gráfico vazio
 
 
 # Limites da API do ChatGemini
@@ -195,17 +189,20 @@ def consultar_gemini_conversacional(pergunta, dataframe):
     # Converter todos os dados do DataFrame em uma string para fornecer contexto ao Gemini
     contexto = dataframe.to_string(index=False)
     contexto_conversa = "\n".join([f"{msg['Usuário']}: {msg['TIAGO']}" for msg in historico_conversa[-5:]])
-    # prompt = f"Os dados a seguir são extraídos de um arquivo Excel:\n{contexto}\n\nConverse com o usuário e responda de maneira amigável e educada, nao me traga emojis: {pergunta}"
-    prompt = f"Contexto da conversa:\n{contexto_conversa}\n\nDados do Excel:\n{contexto}\n\nPergunta atual: {pergunta}\n\nConverse com o usuário e responda de maneira amigável e eduacada e sem trazer emojis!"
-    # Contar tokens no prompt
+    prompt = (f"Contexto da conversa:\n{contexto_conversa}\n\nDados do Excel:\n{contexto}\n\n"
+              f"Pergunta atual: {pergunta}\n\nConverse com o usuário de forma amigável e educada, "
+              "sem incluir emojis.")
+    
     tokens_enviados = contar_tokens(prompt)
     print(f"Tokens enviados: {tokens_enviados}")
+    
     try:
         # Enviar a pergunta para o Gemini e obter uma resposta
         response = model.generate_content(prompt)
         tokens_recebidos = contar_tokens(response.text)
         print(f"Tokens recebidos: {tokens_recebidos}")
-        return response.text.strip()
+        return response.text.strip()  # Retorna a resposta como string limpa
     except Exception as e:
         print(f"Erro ao consultar a API do Gemini: {e}")
-        return "Desculpe, Por eu ser novo aqui ainda estou aprimorando meu banco, pergunte novamente daqui alguns segundos."
+        return "Desculpe, ainda estou aprimorando minha base de conhecimento. Tente novamente em alguns instantes."
+
